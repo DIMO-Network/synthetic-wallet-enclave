@@ -9,4 +9,4 @@ COPY . .
 
 RUN go build -v -o /usr/local/bin/test-enclave ./...
 
-CMD ["test-enclave", "client"]
+CMD ["test-enclave", "server", "5005"]

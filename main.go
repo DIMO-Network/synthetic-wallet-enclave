@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"strconv"
 
@@ -27,6 +28,11 @@ func client(cid, port uint32) {
 	}
 }
 
+const (
+	backlog = 128
+	bufsize = 1024
+)
+
 func server(port uint32) {
 	fd, err := unix.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0)
 	if err != nil {
@@ -34,16 +40,35 @@ func server(port uint32) {
 	}
 
 	sa := &unix.SockaddrVM{
-		CID:  cid,
-		Port: uint32(port),
+		CID:  unix.VMADDR_CID_ANY,
+		Port: port,
 	}
 
-	if err := unix.Connect(fd, sa); err != nil {
+	if err := unix.Bind(fd, sa); err != nil {
 		panic(err)
 	}
 
-	if err := unix.Send(fd, []byte("Hello, world!"), 0); err != nil {
+	if err := unix.Listen(fd, backlog); err != nil {
 		panic(err)
+	}
+
+	buf := make([]byte, bufsize)
+
+	for {
+		nfd, _, err := unix.Accept(fd)
+		if err != nil {
+			panic(err)
+		}
+
+		for {
+			n, _, err := unix.Recvfrom(nfd, buf, 0)
+			if err != nil {
+				log.Printf("Error %q reading from socket.", err)
+				break
+			}
+
+			log.Printf("Got message %q", string(buf[:n]))
+		}
 	}
 }
 
