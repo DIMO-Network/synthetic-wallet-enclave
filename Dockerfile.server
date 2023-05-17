@@ -1,12 +1,5 @@
-FROM golang:1.20
+FROM alpine:latest
 
-WORKDIR /usr/src/test-enclave
-
-COPY go.mod go.sum ./
-RUN go mod download && go mod verify
-
-COPY . .
-
-RUN go build -v -o /usr/local/bin/test-enclave ./...
+COPY test-enclave .
 
 CMD ["test-enclave", "server", "5005"]
