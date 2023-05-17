@@ -39,6 +39,8 @@ func server(port uint32) {
 		panic(err)
 	}
 
+	log.Printf("Opened fd %d", fd)
+
 	sa := &unix.SockaddrVM{
 		CID:  unix.VMADDR_CID_ANY,
 		Port: port,
@@ -93,6 +95,8 @@ func main() {
 		}
 		client(uint32(cid), uint32(port))
 	case "server":
+		log.Println("Starting server.")
+
 		a := os.Args[2:]
 		if len(a) != 1 {
 			panic("port argument required")
