@@ -1,6 +1,6 @@
-FROM amazonlinux:2
+FROM alpine:latest
 
-WORKDIR /app
+WORKDIR /
 
 COPY ./kmstool_enclave_cli ./
 COPY ./libnsm.so /usr/lib64/
