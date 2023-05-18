@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/cc-debian11
+FROM amazonlinux:2
 
 WORKDIR /
 
