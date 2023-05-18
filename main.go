@@ -33,6 +33,7 @@ func client(cid, port uint32, c cred) {
 		AccessKeyID:     c.AccessKeyID,
 		SecretAccessKey: c.SecretAccessKey,
 		Token:           c.Token,
+		Ciphertext:      "xddgang",
 	}
 
 	b, _ := json.Marshal(m)

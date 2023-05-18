@@ -1,17 +1,8 @@
-FROM golang:1.20 AS build
-
-WORKDIR /usr/src/test-enclave
-
-COPY go.mod go.sum ./
-RUN go mod download && go mod verify
-
-COPY *.go .
-RUN go build -v -o /usr/local/bin/test-enclave
-
-FROM gcr.io/distroless/base-debian11 AS release
+FROM alpine:latest
 
 WORKDIR /
 
-COPY --from=build /usr/local/bin/test-enclave /test-enclave
+COPY kmstool_cli_enclave ./
+COPY --from=build /usr/local/bin/test-enclave ./
 
-ENTRYPOINT ["./test-enclave", "server", "5005"]
+CMD ["./test-enclave", "server", "5005"]
