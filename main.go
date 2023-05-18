@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -40,7 +39,7 @@ func server(port uint32) {
 		panic(err)
 	}
 
-	log.Printf("Opened fd %d", fd)
+	log.Printf("Opened file descriptor %d.", fd)
 
 	sa := &unix.SockaddrVM{
 		CID:  unix.VMADDR_CID_ANY,
@@ -60,18 +59,18 @@ func server(port uint32) {
 	for {
 		nfd, _, err := unix.Accept(fd)
 		if err != nil {
-			log.Printf("Error on accept: %q.", err)
+			log.Printf("Error on accept: %s.", err)
 			continue
 		}
 
 		for {
 			n, _, err := unix.Recvfrom(nfd, buf, 0)
 			if err != nil {
-				log.Printf("Error on recvfrom %q.", err)
+				log.Printf("Error on recvfrom: %s.", err)
 				break
 			}
 
-			log.Printf("Got message: %q.", string(buf[:n]))
+			log.Printf("Got message: %s.", string(buf[:n]))
 		}
 	}
 }
@@ -97,25 +96,17 @@ func main() {
 		}
 		client(uint32(cid), uint32(port))
 	case "server":
-		log.Println("Starting server.")
-
-		ct := 0
-
-		for {
-			ct++
-			log.Printf("XDD %d", ct)
-			time.Sleep(5 * time.Second)
+		a := os.Args[2:]
+		if len(a) != 1 {
+			panic("port argument required")
+		}
+		port, err := strconv.ParseUint(a[0], 10, 32)
+		if err != nil {
+			panic(err)
 		}
 
-		// a := os.Args[2:]
-		// if len(a) != 1 {
-		// 	panic("port argument required")
-		// }
-		// port, err := strconv.ParseUint(a[0], 10, 32)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// server(uint32(port))
+		log.Printf("Starting server on port %d.", port)
+		server(uint32(port))
 	default:
 		panic("unrecognized subcommand")
 	}
