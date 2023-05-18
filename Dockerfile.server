@@ -3,7 +3,9 @@ FROM gcr.io/distroless/base-debian11
 WORKDIR /
 
 COPY ./kmstool_enclave_cli ./
-COPY ./libnsm.so /usr/lib64/
+COPY ./libnsm.so ./
 COPY ./test-enclave ./
+
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/"
 
 ENTRYPOINT ["./test-enclave", "server", "5005"]
