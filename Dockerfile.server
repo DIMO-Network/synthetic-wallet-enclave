@@ -5,13 +5,13 @@ WORKDIR /usr/src/test-enclave
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
-COPY . .
+COPY *.go .
 RUN go build -v -o /usr/local/bin/test-enclave
 
-FROM alpine:latest AS release
+FROM gcr.io/distroless/base-debian11 AS release
 
 WORKDIR /
 
-COPY --from=build /usr/local/bin/test-enclave .
+COPY --from=build /usr/local/bin/test-enclave /test-enclave
 
 ENTRYPOINT ["./test-enclave", "server", "5005"]
