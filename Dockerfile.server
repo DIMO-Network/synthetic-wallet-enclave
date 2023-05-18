@@ -1,5 +1,19 @@
-FROM alpine:latest
+FROM golang:1.20 AS build
 
-COPY test-enclave .
+WORKDIR /usr/src/test-enclave
 
-CMD ["./test-enclave", "server", "5005"]
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+RUN go build -v -o /usr/local/bin/test-enclave
+
+FROM alpine:latest AS release
+
+WORKDIR /
+
+COPY --from=build /usr/local/bin/test-enclave .
+
+USER dimo:dimo
+
+ENTRYPOINT ["/test-enclave", "server", "5005"]
