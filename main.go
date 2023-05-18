@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -95,29 +94,29 @@ func server(port uint32) {
 
 			log.Printf("Got message: %s", string(buf[:n]))
 
-			var m msg
-			if err := json.Unmarshal(buf[:n], &m); err != nil {
-				log.Printf("Failed to unmarshal message: %s", err)
-				break
-			}
+			// var m msg
+			// if err := json.Unmarshal(buf[:n], &m); err != nil {
+			// 	log.Printf("Failed to unmarshal message: %s", err)
+			// 	break
+			// }
 
-			cmd := exec.Command(
-				"/kmstool_enclave_cli",
-				"decrypt",
-				"--region", "us-east-2",
-				"--proxy-port", "8000",
-				"--aws-access-key-id", m.AccessKeyID,
-				"--aws-secret-access-key", m.SecretAccessKey,
-				"--aws-session-token", m.Token,
-				"--ciphertext", m.Ciphertext,
-			)
+			// cmd := exec.Command(
+			// 	"/kmstool_enclave_cli",
+			// 	"decrypt",
+			// 	"--region", "us-east-2",
+			// 	"--proxy-port", "8000",
+			// 	"--aws-access-key-id", m.AccessKeyID,
+			// 	"--aws-secret-access-key", m.SecretAccessKey,
+			// 	"--aws-session-token", m.Token,
+			// 	"--ciphertext", m.Ciphertext,
+			// )
 
-			out, err := cmd.Output()
-			if err != nil {
-				log.Printf("Failed executing KMS command: %s", err)
-			}
+			// out, err := cmd.Output()
+			// if err != nil {
+			// 	log.Printf("Failed executing KMS command: %s", err)
+			// }
 
-			log.Printf("Got message: %s.", string(out))
+			// log.Printf("Got message: %s.", string(out))
 		}
 	}
 }
