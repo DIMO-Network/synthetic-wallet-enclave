@@ -59,17 +59,18 @@ func server(port uint32) {
 	for {
 		nfd, _, err := unix.Accept(fd)
 		if err != nil {
-			panic(err)
+			log.Printf("Error on accept: %q.", err)
+			continue
 		}
 
 		for {
 			n, _, err := unix.Recvfrom(nfd, buf, 0)
 			if err != nil {
-				log.Printf("Error %q reading from socket.", err)
+				log.Printf("Error on recvfrom %q.", err)
 				break
 			}
 
-			log.Printf("Got message %q", string(buf[:n]))
+			log.Printf("Got message: %q.", string(buf[:n]))
 		}
 	}
 }
