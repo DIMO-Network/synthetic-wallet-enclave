@@ -174,7 +174,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		client(uint32(cid), uint32(port))
+		client(uint32(cid), uint32(port), c)
 	case "server":
 		a := os.Args[2:]
 		if len(a) != 1 {
