@@ -44,7 +44,7 @@ func client(cid, port uint32, c cred) {
 
 const (
 	backlog = 128
-	bufsize = 1024
+	bufsize = 4096
 )
 
 type cred struct {
