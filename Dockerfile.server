@@ -4,4 +4,4 @@ WORKDIR /
 
 COPY kmstool_enclave_cli test-enclave ./
 
-CMD ["./test-enclave", "server", "5005"]
+CMD ["/test-enclave", "server", "5005"]
