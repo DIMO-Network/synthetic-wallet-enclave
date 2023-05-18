@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"golang.org/x/sys/unix"
 )
 
@@ -73,6 +76,18 @@ func server(port uint32) {
 				break
 			}
 
+			/*
+							           "/kmstool_enclave_cli",
+				           "decrypt",
+				           "--region", "us-east-1",
+				           "--proxy-port", "8000",
+				           "--aws-access-key-id", access_key_id,
+				           "--aws-secret-access-key", secret_access_key,
+				           "--aws-session-token", token,
+				           "--ciphertext", ciphertext,
+			*/
+			os.Open("")
+
 			log.Printf("Got message: %s.", string(buf[:n]))
 		}
 	}
@@ -85,19 +100,35 @@ func main() {
 
 	switch os.Args[1] {
 	case "client":
-		a := os.Args[2:]
-		if len(a) != 2 {
-			panic("cid and port arguments required")
+		ctx := context.TODO()
+
+		cfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			log.Printf("error: %v", err)
+			return
 		}
-		cid, err := strconv.ParseUint(a[0], 10, 32)
+
+		client := imds.NewFromConfig(cfg)
+		mo, err := client.GetMetadata(ctx, &imds.GetMetadataInput{})
 		if err != nil {
 			panic(err)
 		}
-		port, err := strconv.ParseUint(a[1], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		client(uint32(cid), uint32(port))
+
+		log.Println("MO", mo)
+
+		// a := os.Args[2:]
+		// if len(a) != 2 {
+		// 	panic("cid and port arguments required")
+		// }
+		// cid, err := strconv.ParseUint(a[0], 10, 32)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// port, err := strconv.ParseUint(a[1], 10, 32)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// client(uint32(cid), uint32(port))
 	case "server":
 		a := os.Args[2:]
 		if len(a) != 1 {
