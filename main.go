@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -113,8 +114,14 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		defer mo.Content.Close()
 
-		log.Println("MO", mo)
+		b, err := io.ReadAll(mo.Content)
+		if err != nil {
+			panic(err)
+		}
+
+		log.Println("MO", string(b))
 
 		// a := os.Args[2:]
 		// if len(a) != 2 {
