@@ -110,7 +110,7 @@ func main() {
 		}
 
 		client := imds.NewFromConfig(cfg)
-		mo, err := client.GetMetadata(ctx, &imds.GetMetadataInput{Path: "iam/security-credentials"})
+		mo, err := client.GetMetadata(ctx, &imds.GetMetadataInput{Path: "iam/security-credentials/dev-ec2-test-enclave"})
 		if err != nil {
 			panic(err)
 		}
