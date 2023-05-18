@@ -110,7 +110,7 @@ func main() {
 		}
 
 		client := imds.NewFromConfig(cfg)
-		mo, err := client.GetMetadata(ctx, &imds.GetMetadataInput{})
+		mo, err := client.GetMetadata(ctx, &imds.GetMetadataInput{Path: "iam/security-credentials"})
 		if err != nil {
 			panic(err)
 		}
