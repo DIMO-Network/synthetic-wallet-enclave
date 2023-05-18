@@ -2,4 +2,4 @@ FROM alpine:latest
 
 COPY test-enclave .
 
-CMD ["test-enclave", "server", "5005"]
+CMD ["./test-enclave", "server", "5005"]
