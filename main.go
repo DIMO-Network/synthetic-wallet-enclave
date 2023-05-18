@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -98,15 +99,23 @@ func main() {
 	case "server":
 		log.Println("Starting server.")
 
-		a := os.Args[2:]
-		if len(a) != 1 {
-			panic("port argument required")
+		ct := 0
+
+		for {
+			ct++
+			log.Printf("XDD %d", ct)
+			time.Sleep(5 * time.Second)
 		}
-		port, err := strconv.ParseUint(a[0], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		server(uint32(port))
+
+		// a := os.Args[2:]
+		// if len(a) != 1 {
+		// 	panic("port argument required")
+		// }
+		// port, err := strconv.ParseUint(a[0], 10, 32)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// server(uint32(port))
 	default:
 		panic("unrecognized subcommand")
 	}
