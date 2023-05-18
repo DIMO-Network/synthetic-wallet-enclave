@@ -103,7 +103,7 @@ func server(port uint32) {
 			}
 
 			cmd := exec.Command(
-				"/kmstool_enclave_cli",
+				"./kmstool_enclave_cli",
 				"decrypt",
 				"--region", "us-east-2",
 				"--proxy-port", "8000",
@@ -116,9 +116,12 @@ func server(port uint32) {
 			out, err := cmd.Output()
 			if err != nil {
 				log.Printf("Failed executing KMS command: %s", err)
+				if err, ok := err.(*exec.ExitError); ok {
+					log.Printf("Stderr: %s", string(err.Stderr))
+				}
+			} else {
+				log.Printf("Got message: %s.", string(out))
 			}
-
-			log.Printf("Got message: %s.", string(out))
 		}
 	}
 }
