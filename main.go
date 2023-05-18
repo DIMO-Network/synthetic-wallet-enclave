@@ -149,7 +149,7 @@ func main() {
 		}
 
 		md := imds.NewFromConfig(cfg)
-		mo, err := md.GetMetadata(ctx, &imds.GetMetadataInput{Path: "iam/security-credentials/dev-ec2-test-enclave"})
+		mo, err := md.GetMetadata(ctx, &imds.GetMetadataInput{Path: "iam/security-credentials/eks-quickstart-ManagedNodeInstance"})
 		if err != nil {
 			panic(err)
 		}
