@@ -33,7 +33,7 @@ func client(cid, port uint32, c cred) {
 		AccessKeyID:     c.AccessKeyID,
 		SecretAccessKey: c.SecretAccessKey,
 		Token:           c.Token,
-		Ciphertext:      "xddgang",
+		Ciphertext:      "AQICAHhqHeUJcnxbZdLQktD+AYejxU0QZLTdFSU4wEOOgDhxlAH8FtXmQ0wr3MJPxgZBzYA3AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMjnUqP8rxxtVpECsHAgEQgDu+4sVOEh5sw8AK6kmWuZuCT9WJ5ZjdyDdu/eb8SAoqSAwCNKUHFW+85KVR5agoP9iuej1TtERKX6/n9A==",
 	}
 
 	b, _ := json.Marshal(m)
