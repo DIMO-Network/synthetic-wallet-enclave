@@ -69,6 +69,9 @@ func server(port uint32) {
 				log.Printf("Error on recvfrom: %s.", err)
 				break
 			}
+			if n == 0 {
+				break
+			}
 
 			log.Printf("Got message: %s.", string(buf[:n]))
 		}
