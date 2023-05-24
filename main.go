@@ -87,7 +87,7 @@ func enclave(port uint32) {
 				}
 			} else {
 				sout := string(out)
-				plain := strings.Split(sout, ":")[1]
+				plain := strings.TrimSpace(strings.Split(sout, ":")[1])
 
 				seed, err := base64.StdEncoding.DecodeString(plain)
 				if err != nil {
