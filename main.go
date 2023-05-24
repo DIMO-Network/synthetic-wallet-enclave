@@ -1,60 +1,26 @@
 package main
 
 import (
-	"context"
+	"encoding/base64"
 	"encoding/json"
-	"io"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/sys/unix"
 )
-
-func client(cid, port uint32, c cred) {
-	fd, err := unix.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	sa := &unix.SockaddrVM{
-		CID:  cid,
-		Port: uint32(port),
-	}
-
-	if err := unix.Connect(fd, sa); err != nil {
-		panic(err)
-	}
-
-	m := msg{
-		AccessKeyID:     c.AccessKeyID,
-		SecretAccessKey: c.SecretAccessKey,
-		Token:           c.Token,
-		Ciphertext:      "AQICAHhqHeUJcnxbZdLQktD+AYejxU0QZLTdFSU4wEOOgDhxlAH8FtXmQ0wr3MJPxgZBzYA3AAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMjnUqP8rxxtVpECsHAgEQgDu+4sVOEh5sw8AK6kmWuZuCT9WJ5ZjdyDdu/eb8SAoqSAwCNKUHFW+85KVR5agoP9iuej1TtERKX6/n9A==",
-	}
-
-	b, _ := json.Marshal(m)
-
-	if err := unix.Send(fd, b, 0); err != nil {
-		panic(err)
-	}
-}
 
 const (
 	backlog = 128
 	bufsize = 4096
 )
 
-type cred struct {
-	AccessKeyID     string `json:"AccessKeyId"`
-	SecretAccessKey string `json:"SecretAccessKey"`
-	Token           string `json:"Token"`
-}
-
-func server(port uint32) {
+func enclave(port uint32) {
 	fd, err := unix.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0)
 	if err != nil {
 		panic(err)
@@ -96,7 +62,7 @@ func server(port uint32) {
 
 			log.Printf("Got message: %s", string(buf[:n]))
 
-			var m msg
+			var m Request
 			if err := json.Unmarshal(buf[:n], &m); err != nil {
 				log.Printf("Failed to unmarshal message: %s", err)
 				break
@@ -107,10 +73,10 @@ func server(port uint32) {
 				"decrypt",
 				"--region", "us-east-2",
 				"--proxy-port", "8000",
-				"--aws-access-key-id", m.AccessKeyID,
-				"--aws-secret-access-key", m.SecretAccessKey,
-				"--aws-session-token", m.Token,
-				"--ciphertext", m.Ciphertext,
+				"--aws-access-key-id", m.Credentials.AccessKeyID,
+				"--aws-secret-access-key", m.Credentials.SecretAccessKey,
+				"--aws-session-token", m.Credentials.Token,
+				"--ciphertext", m.EncryptedSeed,
 			)
 
 			out, err := cmd.Output()
@@ -120,78 +86,85 @@ func server(port uint32) {
 					log.Printf("Stderr: %s", string(err.Stderr))
 				}
 			} else {
-				log.Printf("Got message: %s.", string(out))
+				sout := string(out)
+				plain := strings.Split(sout, ":")[1]
+
+				seed, err := base64.StdEncoding.DecodeString(plain)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				ek, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				ck, err := ek.Child(hdkeychain.HardenedKeyStart + m.ChildNumber)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				add, err := ck.Address(&chaincfg.MainNetParams)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				addr := common.BytesToAddress(add.ScriptAddress())
+
+				bout, err := json.Marshal(Response{Address: addr})
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				err = unix.Send(nfd, bout, 0)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 			}
 		}
 	}
 }
 
-type msg struct {
+type Request struct {
+	Credentials   AWSCredentials `json:"credentials"`
+	EncryptedSeed string         `json:"encryptedSeed"`
+	ChildNumber   uint32         `json:"childNumber"`
+}
+
+type Response struct {
+	Address common.Address `json:"address"`
+}
+
+type AWSCredentials struct {
 	AccessKeyID     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
 	Token           string `json:"token"`
-	Ciphertext      string `json:"ciphertext"`
 }
 
 func main() {
-	if len(os.Args) == 1 {
-		panic("subcommand client or server required")
+	if len(os.Args) < 2 {
+		panic("port argument required")
+	}
+	port, err := parseUint32(os.Args[1])
+	if err != nil {
+		panic(err)
 	}
 
-	switch os.Args[1] {
-	case "client":
-		ctx := context.TODO()
+	log.Printf("Starting server on port %d.", port)
+	enclave(port)
+}
 
-		cfg, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			log.Printf("error: %v", err)
-			return
-		}
-
-		md := imds.NewFromConfig(cfg)
-		mo, err := md.GetMetadata(ctx, &imds.GetMetadataInput{Path: "iam/security-credentials/eks-quickstart-ManagedNodeInstance"})
-		if err != nil {
-			panic(err)
-		}
-
-		defer mo.Content.Close()
-
-		b, err := io.ReadAll(mo.Content)
-		if err != nil {
-			panic(err)
-		}
-
-		var c cred
-		if err := json.Unmarshal(b, &c); err != nil {
-			panic(err)
-		}
-
-		a := os.Args[2:]
-		if len(a) != 2 {
-			panic("cid and port arguments required")
-		}
-		cid, err := strconv.ParseUint(a[0], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		port, err := strconv.ParseUint(a[1], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-		client(uint32(cid), uint32(port), c)
-	case "server":
-		a := os.Args[2:]
-		if len(a) != 1 {
-			panic("port argument required")
-		}
-		port, err := strconv.ParseUint(a[0], 10, 32)
-		if err != nil {
-			panic(err)
-		}
-
-		log.Printf("Starting server on port %d.", port)
-		server(uint32(port))
-	default:
-		panic("unrecognized subcommand")
+func parseUint32(s string) (uint32, error) {
+	n, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return 0, err
 	}
+
+	return uint32(n), err
 }
