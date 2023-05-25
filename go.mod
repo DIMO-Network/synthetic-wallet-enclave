@@ -1,15 +1,20 @@
 module github.com/DIMO-Network/test-enclave
 
-go 1.20
+go 1.18
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta
 	golang.org/x/sys v0.8.0
 )
 
-require golang.org/x/crypto v0.1.0 // indirect
+require (
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
+	golang.org/x/crypto v0.1.0 // indirect
+)
 
 require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/ethereum/go-ethereum v1.11.6
+	github.com/rs/zerolog v1.29.1
 )
