@@ -92,11 +92,7 @@ func accept(fd int, logger *zerolog.Logger) error {
 		res, _ = json.Marshal(Response[ErrData]{Code: 2, Data: ErrData{Message: err.Error()}})
 	}
 
-	if err := unix.Send(nfd, res, 0); err != nil {
-		return err
-	}
-
-	return nil
+	return unix.Send(nfd, res, 0)
 }
 
 func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
@@ -129,7 +125,9 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 		case <-ctx.Done():
 			return nil
 		default:
-			accept(fd, logger)
+			if err := accept(fd, logger); err != nil {
+				logger.Err(err).Msg("Accept failed.")
+			}
 		}
 	}
 }
