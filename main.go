@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,6 +15,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"golang.org/x/sys/unix"
 )
@@ -24,7 +27,7 @@ const (
 )
 
 func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
-	var m Request
+	var m Request[json.RawMessage]
 	if err := json.Unmarshal(buf, &m); err != nil {
 		return nil, err
 	}
@@ -57,19 +60,53 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 		return nil, err
 	}
 
-	ck, err := ek.Child(hdkeychain.HardenedKeyStart + m.ChildNumber)
-	if err != nil {
-		return nil, err
+	switch m.Type {
+	case "GetAddress":
+		var x AddrReqData
+		if err := json.Unmarshal(m.Data, &x); err != nil {
+			return nil, err
+		}
+
+		ck, err := ek.Child(hdkeychain.HardenedKeyStart + x.ChildNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		add, err := ck.Address(&chaincfg.MainNetParams)
+		if err != nil {
+			return nil, err
+		}
+
+		addr := common.BytesToAddress(add.ScriptAddress())
+
+		return json.Marshal(Response[AddrResData]{Code: 0, Data: AddrResData{Address: addr}})
+	case "SignHash":
+		var x SignReqData
+		if err := json.Unmarshal(m.Data, &x); err != nil {
+			return nil, err
+		}
+
+		ck, err := ek.Child(hdkeychain.HardenedKeyStart + x.ChildNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		pk, err := ck.ECPrivKey()
+		if err != nil {
+			return nil, err
+		}
+
+		sig, err := crypto.Sign(x.Hash.Bytes(), pk.ToECDSA())
+		if err != nil {
+			return nil, err
+		}
+
+		sig[64] += 27
+
+		return json.Marshal(Response[SignResData]{Code: 0, Data: SignResData{Signature: sig}})
+	default:
+		return nil, fmt.Errorf("unrecognized request type %s", m.Type)
 	}
-
-	add, err := ck.Address(&chaincfg.MainNetParams)
-	if err != nil {
-		return nil, err
-	}
-
-	addr := common.BytesToAddress(add.ScriptAddress())
-
-	return json.Marshal(Response[AddrData]{Code: 0, Data: AddrData{Address: addr}})
 }
 
 func accept(fd int, logger *zerolog.Logger) error {
@@ -132,18 +169,32 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 	}
 }
 
-type Request struct {
+type Request[A any] struct {
 	Credentials struct {
 		AccessKeyID     string `json:"accessKeyId"`
 		SecretAccessKey string `json:"secretAccessKey"`
 		Token           string `json:"token"`
 	} `json:"credentials"`
+	Type          string `json:"type"`
 	EncryptedSeed string `json:"encryptedSeed"`
-	ChildNumber   uint32 `json:"childNumber"`
+	Data          A      `json:"data"`
 }
 
-type AddrData struct {
+type AddrReqData struct {
+	ChildNumber uint32 `json:"childNumber"`
+}
+
+type SignReqData struct {
+	ChildNumber uint32      `json:"childNumber"`
+	Hash        common.Hash `json:"hash"`
+}
+
+type AddrResData struct {
 	Address common.Address `json:"address"`
+}
+
+type SignResData struct {
+	Signature hexutil.Bytes `json:"signature"`
 }
 
 type ErrData struct {
