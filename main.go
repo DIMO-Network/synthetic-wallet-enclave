@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
-	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/rs/zerolog"
 	"golang.org/x/sys/unix"
 )
 
@@ -20,13 +23,89 @@ const (
 	bufsize = 4096
 )
 
-func enclave(port uint32) {
-	fd, err := unix.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0)
-	if err != nil {
-		panic(err)
+func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
+	var m Request
+	if err := json.Unmarshal(buf, &m); err != nil {
+		return nil, err
 	}
 
-	log.Printf("Opened file descriptor %d.", fd)
+	cmd := exec.Command(
+		"./kmstool_enclave_cli",
+		"decrypt",
+		"--region", "us-east-2",
+		"--proxy-port", "8000",
+		"--aws-access-key-id", m.Credentials.AccessKeyID,
+		"--aws-secret-access-key", m.Credentials.SecretAccessKey,
+		"--aws-session-token", m.Credentials.Token,
+		"--ciphertext", m.EncryptedSeed,
+	)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Output has the form
+	// PLAINTEXT: <base64-encoded plaintext>
+	seed, err := base64.StdEncoding.DecodeString(strings.TrimSpace(strings.Split(string(out), ":")[1]))
+	if err != nil {
+		return nil, err
+	}
+
+	ek, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	if err != nil {
+		return nil, err
+	}
+
+	ck, err := ek.Child(hdkeychain.HardenedKeyStart + m.ChildNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	add, err := ck.Address(&chaincfg.MainNetParams)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := common.BytesToAddress(add.ScriptAddress())
+
+	return json.Marshal(Response[AddrData]{Code: 0, Data: AddrData{Address: addr}})
+}
+
+func accept(fd int, logger *zerolog.Logger) error {
+	nfd, _, err := unix.Accept(fd)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(nfd)
+
+	buf := make([]byte, bufsize)
+	n, _, err := unix.Recvfrom(nfd, buf, 0)
+	if err != nil {
+		return err
+	}
+
+	logger.Debug().Msgf("Got message %q.", string(buf[:n]))
+
+	res, err := handle(buf[:n], logger)
+	if err != nil {
+		res, _ = json.Marshal(Response[ErrData]{Code: 2, Data: ErrData{Message: err.Error()}})
+	}
+
+	if err := unix.Send(nfd, res, 0); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
+	fd, err := unix.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0)
+	if err != nil {
+		return err
+	}
+
+	logger.Debug().Msgf("Created socket %d.", fd)
 
 	sa := &unix.SockaddrVM{
 		CID:  unix.VMADDR_CID_ANY,
@@ -37,127 +116,62 @@ func enclave(port uint32) {
 		panic(err)
 	}
 
+	logger.Debug().Msgf("Bound socket with a random address and port %d.", port)
+
 	if err := unix.Listen(fd, backlog); err != nil {
 		panic(err)
 	}
 
-	buf := make([]byte, bufsize)
+	logger.Debug().Msgf("Accepting requests with backlog %d.", backlog)
 
 	for {
-		nfd, _, err := unix.Accept(fd)
-		if err != nil {
-			log.Printf("Error on accept: %s.", err)
-			continue
-		}
-
-		for {
-			n, _, err := unix.Recvfrom(nfd, buf, 0)
-			if err != nil {
-				log.Printf("Error on recvfrom: %s.", err)
-				break
-			}
-			if n == 0 {
-				break
-			}
-
-			log.Printf("Got message: %s", string(buf[:n]))
-
-			var m Request
-			if err := json.Unmarshal(buf[:n], &m); err != nil {
-				log.Printf("Failed to unmarshal message: %s", err)
-				break
-			}
-
-			cmd := exec.Command(
-				"./kmstool_enclave_cli",
-				"decrypt",
-				"--region", "us-east-2",
-				"--proxy-port", "8000",
-				"--aws-access-key-id", m.Credentials.AccessKeyID,
-				"--aws-secret-access-key", m.Credentials.SecretAccessKey,
-				"--aws-session-token", m.Credentials.Token,
-				"--ciphertext", m.EncryptedSeed,
-			)
-
-			out, err := cmd.Output()
-			if err != nil {
-				log.Printf("Failed executing KMS command: %s", err)
-				if err, ok := err.(*exec.ExitError); ok {
-					log.Printf("Stderr: %s", string(err.Stderr))
-				}
-			} else {
-				sout := string(out)
-				plain := strings.TrimSpace(strings.Split(sout, ":")[1])
-
-				seed, err := base64.StdEncoding.DecodeString(plain)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-
-				ek, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-
-				ck, err := ek.Child(hdkeychain.HardenedKeyStart + m.ChildNumber)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-
-				add, err := ck.Address(&chaincfg.MainNetParams)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-
-				addr := common.BytesToAddress(add.ScriptAddress())
-
-				bout, err := json.Marshal(Response{Address: addr})
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-
-				err = unix.Send(nfd, bout, 0)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-			}
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			accept(fd, logger)
 		}
 	}
 }
 
 type Request struct {
-	Credentials   AWSCredentials `json:"credentials"`
-	EncryptedSeed string         `json:"encryptedSeed"`
-	ChildNumber   uint32         `json:"childNumber"`
+	Credentials struct {
+		AccessKeyID     string `json:"accessKeyId"`
+		SecretAccessKey string `json:"secretAccessKey"`
+		Token           string `json:"token"`
+	} `json:"credentials"`
+	EncryptedSeed string `json:"encryptedSeed"`
+	ChildNumber   uint32 `json:"childNumber"`
 }
 
-type Response struct {
+type AddrData struct {
 	Address common.Address `json:"address"`
 }
 
-type AWSCredentials struct {
-	AccessKeyID     string `json:"accessKeyId"`
-	SecretAccessKey string `json:"secretAccessKey"`
-	Token           string `json:"token"`
+type ErrData struct {
+	Message string `json:"message"`
+}
+
+type Response[A any] struct {
+	Code int `json:"code"`
+	Data A   `json:"data"`
 }
 
 func main() {
+	logger := zerolog.New(os.Stderr).With().Str("app", "virtual-device-enclave").Timestamp().Logger()
+
 	if len(os.Args) < 2 {
-		panic("port argument required")
+		logger.Fatal().Msg("Port argument required.")
 	}
 	port, err := parseUint32(os.Args[1])
 	if err != nil {
-		panic(err)
+		logger.Fatal().Err(err).Msgf("Couldn't parse port %q.", os.Args[1])
 	}
 
-	log.Printf("Starting server on port %d.", port)
-	enclave(port)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	enclave(ctx, port, &logger)
 }
 
 func parseUint32(s string) (uint32, error) {
