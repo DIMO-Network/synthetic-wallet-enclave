@@ -10,12 +10,13 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
+	"github.com/DIMO-Network/synthetic-wallet-enclave/pkg/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"golang.org/x/sys/unix"
@@ -26,43 +27,57 @@ const (
 	bufsize = 4096
 )
 
+var seed []byte
+var seedMu sync.RWMutex
+
 func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
-	var m Request[json.RawMessage]
+	var m types.Request[json.RawMessage]
 	if err := json.Unmarshal(buf, &m); err != nil {
 		return nil, err
 	}
 
-	cmd := exec.Command(
-		"./kmstool_enclave_cli",
-		"decrypt",
-		"--region", "us-east-2",
-		"--proxy-port", "8000",
-		"--aws-access-key-id", m.Credentials.AccessKeyID,
-		"--aws-secret-access-key", m.Credentials.SecretAccessKey,
-		"--aws-session-token", m.Credentials.Token,
-		"--ciphertext", m.EncryptedSeed,
-	)
+	seedMu.RLock()
 
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
+	for seed == nil {
+		seedMu.RUnlock()
+		seedMu.Lock()
+		if seed == nil {
+			cmd := exec.Command(
+				"./kmstool_enclave_cli",
+				"decrypt",
+				"--region", "us-east-2",
+				"--proxy-port", "8000",
+				"--aws-access-key-id", m.Credentials.AccessKeyID,
+				"--aws-secret-access-key", m.Credentials.SecretAccessKey,
+				"--aws-session-token", m.Credentials.Token,
+				"--ciphertext", m.EncryptedSeed,
+			)
 
-	// Output has the form
-	// PLAINTEXT: <base64-encoded plaintext>
-	seed, err := base64.StdEncoding.DecodeString(strings.TrimSpace(strings.Split(string(out), ":")[1]))
-	if err != nil {
-		return nil, err
+			out, err := cmd.Output()
+			if err != nil {
+				return nil, err
+			}
+
+			// Output has the form
+			// PLAINTEXT: <base64-encoded plaintext>
+			seed, err = base64.StdEncoding.DecodeString(strings.TrimSpace(strings.Split(string(out), ":")[1]))
+			if err != nil {
+				return nil, err
+			}
+		}
+		seedMu.Unlock()
+		seedMu.RLock()
 	}
 
 	ek, err := hdkeychain.NewMaster(seed, &chaincfg.MainNetParams)
+	seedMu.RUnlock()
 	if err != nil {
 		return nil, err
 	}
 
 	switch m.Type {
 	case "GetAddress":
-		var x AddrReqData
+		var x types.AddrReqData
 		if err := json.Unmarshal(m.Data, &x); err != nil {
 			return nil, err
 		}
@@ -79,9 +94,9 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 
 		addr := common.BytesToAddress(add.ScriptAddress())
 
-		return json.Marshal(Response[AddrResData]{Code: 0, Data: AddrResData{Address: addr}})
+		return json.Marshal(types.Response[types.AddrResData]{Code: 0, Data: types.AddrResData{Address: addr}})
 	case "SignHash":
-		var x SignReqData
+		var x types.SignReqData
 		if err := json.Unmarshal(m.Data, &x); err != nil {
 			return nil, err
 		}
@@ -103,7 +118,7 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 
 		sig[64] += 27
 
-		return json.Marshal(Response[SignResData]{Code: 0, Data: SignResData{Signature: sig}})
+		return json.Marshal(types.Response[types.SignResData]{Code: 0, Data: types.SignResData{Signature: sig}})
 	default:
 		return nil, fmt.Errorf("unrecognized request type %s", m.Type)
 	}
@@ -126,7 +141,7 @@ func accept(fd int, logger *zerolog.Logger) error {
 
 	res, err := handle(buf[:n], logger)
 	if err != nil {
-		res, _ = json.Marshal(Response[ErrData]{Code: 2, Data: ErrData{Message: err.Error()}})
+		res, _ = json.Marshal(types.Response[types.ErrData]{Code: 2, Data: types.ErrData{Message: err.Error()}})
 	}
 
 	return unix.Send(nfd, res, 0)
@@ -167,43 +182,6 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 			}
 		}
 	}
-}
-
-type Request[A any] struct {
-	Credentials struct {
-		AccessKeyID     string `json:"accessKeyId"`
-		SecretAccessKey string `json:"secretAccessKey"`
-		Token           string `json:"token"`
-	} `json:"credentials"`
-	Type          string `json:"type"`
-	EncryptedSeed string `json:"encryptedSeed"`
-	Data          A      `json:"data"`
-}
-
-type AddrReqData struct {
-	ChildNumber uint32 `json:"childNumber"`
-}
-
-type SignReqData struct {
-	ChildNumber uint32      `json:"childNumber"`
-	Hash        common.Hash `json:"hash"`
-}
-
-type AddrResData struct {
-	Address common.Address `json:"address"`
-}
-
-type SignResData struct {
-	Signature hexutil.Bytes `json:"signature"`
-}
-
-type ErrData struct {
-	Message string `json:"message"`
-}
-
-type Response[A any] struct {
-	Code int `json:"code"`
-	Data A   `json:"data"`
 }
 
 func main() {

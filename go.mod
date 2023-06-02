@@ -1,4 +1,4 @@
-module github.com/DIMO-Network/test-enclave
+module github.com/DIMO-Network/synthetic-wallet-enclave
 
 go 1.18
 
