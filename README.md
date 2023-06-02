@@ -1,8 +1,7 @@
 On the build box:
 
 ```shell
-nitro-cli build-enclave --docker-dir . --docker-uri synthetic-wallet-enclave --output-file syn
-thetic-wallet-enclave.eif
+nitro-cli build-enclave --docker-dir . --docker-uri synthetic-wallet-enclave --output-file synthetic-wallet-enclave.eif
 ```
 
 On the deployment:
