@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -143,10 +144,11 @@ func accept(fd int, logger *zerolog.Logger) error {
 		return err
 	}
 
-	logger.Debug().Msgf("Got message %q.", string(buf[:n]))
+	logger.Debug().Msg("Got message.")
 
 	res, err := handle(buf[:n], logger)
 	if err != nil {
+		logger.Err(err).Msg("Error handling message.")
 		res, _ = json.Marshal(types.Response[types.ErrData]{Code: 2, Data: types.ErrData{Message: err.Error()}})
 	}
 
@@ -192,6 +194,20 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 
 func main() {
 	logger := zerolog.New(os.Stderr).With().Str("app", "virtual-device-enclave").Timestamp().Logger()
+
+	var commit string
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, s := range info.Settings {
+			if s.Key == "vcs.revision" {
+				commit = s.Value
+				break
+			}
+		}
+	}
+
+	if commit != "" {
+		logger = logger.With().Str("commit", commit[:7]).Logger()
+	}
 
 	if len(os.Args) < 2 {
 		logger.Fatal().Msg("Port argument required.")
