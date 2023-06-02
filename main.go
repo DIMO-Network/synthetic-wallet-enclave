@@ -39,33 +39,39 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 	seedMu.RLock()
 
 	for seed == nil {
+		logger.Info().Msg("Seed not populated, plan to call KMS.")
 		seedMu.RUnlock()
-		seedMu.Lock()
-		if seed == nil {
-			cmd := exec.Command(
-				"./kmstool_enclave_cli",
-				"decrypt",
-				"--region", "us-east-2",
-				"--proxy-port", "8000",
-				"--aws-access-key-id", m.Credentials.AccessKeyID,
-				"--aws-secret-access-key", m.Credentials.SecretAccessKey,
-				"--aws-session-token", m.Credentials.Token,
-				"--ciphertext", m.EncryptedSeed,
-			)
+		if err := func() error {
+			seedMu.Lock()
+			defer seedMu.Unlock()
+			if seed == nil {
+				cmd := exec.Command(
+					"./kmstool_enclave_cli",
+					"decrypt",
+					"--region", "us-east-2",
+					"--proxy-port", "8000",
+					"--aws-access-key-id", m.Credentials.AccessKeyID,
+					"--aws-secret-access-key", m.Credentials.SecretAccessKey,
+					"--aws-session-token", m.Credentials.Token,
+					"--ciphertext", m.EncryptedSeed,
+				)
 
-			out, err := cmd.Output()
-			if err != nil {
-				return nil, err
-			}
+				out, err := cmd.Output()
+				if err != nil {
+					return err
+				}
 
-			// Output has the form
-			// PLAINTEXT: <base64-encoded plaintext>
-			seed, err = base64.StdEncoding.DecodeString(strings.TrimSpace(strings.Split(string(out), ":")[1]))
-			if err != nil {
-				return nil, err
+				// Output has the form
+				// PLAINTEXT: <base64-encoded plaintext>
+				seed, err = base64.StdEncoding.DecodeString(strings.TrimSpace(strings.Split(string(out), ":")[1]))
+				if err != nil {
+					return err
+				}
 			}
+			return nil
+		}(); err != nil {
+			return nil, err
 		}
-		seedMu.Unlock()
 		seedMu.RLock()
 	}
 
