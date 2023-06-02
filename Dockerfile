@@ -4,8 +4,8 @@ WORKDIR /
 
 COPY ./kmstool_enclave_cli ./
 COPY ./libnsm.so ./
-COPY ./test-enclave ./
+COPY ./synthetic-wallet-enclave ./
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/"
 
-ENTRYPOINT ["./test-enclave", "5000"]
+ENTRYPOINT ["./synthetic-wallet-enclave", "5000"]
