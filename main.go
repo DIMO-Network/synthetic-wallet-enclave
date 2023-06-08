@@ -15,9 +15,8 @@ import (
 	"syscall"
 
 	"github.com/DIMO-Network/synthetic-wallet-enclave/pkg/types"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"golang.org/x/sys/unix"
@@ -89,26 +88,33 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 			return nil, err
 		}
 
-		ck, err := ek.Child(hdkeychain.HardenedKeyStart + x.ChildNumber)
+		ck, err := ek.Derive(hdkeychain.HardenedKeyStart + x.ChildNumber)
 		if err != nil {
 			return nil, err
 		}
 
-		add, err := ck.Address(&chaincfg.MainNetParams)
+		sk, err := ck.ECPrivKey()
 		if err != nil {
 			return nil, err
 		}
 
-		addr := common.BytesToAddress(add.ScriptAddress())
+		pk := sk.ToECDSA().PublicKey
 
-		return json.Marshal(types.Response[types.AddrResData]{Code: 0, Data: types.AddrResData{Address: addr}})
+		return json.Marshal(
+			types.Response[types.AddrResData]{
+				Code: 0,
+				Data: types.AddrResData{
+					Address: crypto.PubkeyToAddress(pk),
+				},
+			},
+		)
 	case "SignHash":
 		var x types.SignReqData
 		if err := json.Unmarshal(m.Data, &x); err != nil {
 			return nil, err
 		}
 
-		ck, err := ek.Child(hdkeychain.HardenedKeyStart + x.ChildNumber)
+		ck, err := ek.Derive(hdkeychain.HardenedKeyStart + x.ChildNumber)
 		if err != nil {
 			return nil, err
 		}
