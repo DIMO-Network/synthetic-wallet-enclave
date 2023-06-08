@@ -83,12 +83,12 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 
 	switch m.Type {
 	case "GetAddress":
-		var x types.AddrReqData
-		if err := json.Unmarshal(m.Data, &x); err != nil {
+		var data types.AddrReqData
+		if err := json.Unmarshal(m.Data, &data); err != nil {
 			return nil, err
 		}
 
-		ck, err := ek.Derive(hdkeychain.HardenedKeyStart + x.ChildNumber)
+		ck, err := ek.Derive(hdkeychain.HardenedKeyStart + data.ChildNumber)
 		if err != nil {
 			return nil, err
 		}
@@ -109,12 +109,12 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 			},
 		)
 	case "SignHash":
-		var x types.SignReqData
-		if err := json.Unmarshal(m.Data, &x); err != nil {
+		var data types.SignReqData
+		if err := json.Unmarshal(m.Data, &data); err != nil {
 			return nil, err
 		}
 
-		ck, err := ek.Derive(hdkeychain.HardenedKeyStart + x.ChildNumber)
+		ck, err := ek.Derive(hdkeychain.HardenedKeyStart + data.ChildNumber)
 		if err != nil {
 			return nil, err
 		}
@@ -124,14 +124,21 @@ func handle(buf []byte, logger *zerolog.Logger) (res []byte, err error) {
 			return nil, err
 		}
 
-		sig, err := crypto.Sign(x.Hash.Bytes(), pk.ToECDSA())
+		sig, err := crypto.Sign(data.Hash.Bytes(), pk.ToECDSA())
 		if err != nil {
 			return nil, err
 		}
 
 		sig[64] += 27
 
-		return json.Marshal(types.Response[types.SignResData]{Code: 0, Data: types.SignResData{Signature: sig}})
+		return json.Marshal(
+			types.Response[types.SignResData]{
+				Code: 0,
+				Data: types.SignResData{
+					Signature: sig,
+				},
+			},
+		)
 	default:
 		return nil, fmt.Errorf("unrecognized request type %s", m.Type)
 	}
