@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/DIMO-Network/synthetic-wallet-enclave/pkg/types"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -168,6 +169,8 @@ func accept(fd int, logger *zerolog.Logger) error {
 	return unix.Send(nfd, res, 0)
 }
 
+const heartInterval = 10 * time.Second
+
 func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 	fd, err := unix.Socket(unix.AF_VSOCK, unix.SOCK_STREAM, 0)
 	if err != nil {
@@ -193,9 +196,14 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 
 	logger.Debug().Msgf("Accepting requests with backlog %d.", backlog)
 
+	t := time.NewTicker(heartInterval)
+
 	for {
 		select {
+		case <-t.C:
+			logger.Debug().Msg("Enclave still alive.")
 		case <-ctx.Done():
+			t.Stop()
 			return nil
 		default:
 			if err := accept(fd, logger); err != nil {
@@ -206,7 +214,7 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 }
 
 func main() {
-	logger := zerolog.New(os.Stderr).With().Str("app", "virtual-device-enclave").Timestamp().Logger()
+	logger := zerolog.New(os.Stderr).With().Str("app", "synthetic-wallet-enclave").Timestamp().Logger()
 
 	var commit string
 	if info, ok := debug.ReadBuildInfo(); ok {
