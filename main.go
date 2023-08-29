@@ -196,14 +196,23 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 
 	logger.Debug().Msgf("Accepting requests with backlog %d.", backlog)
 
-	t := time.NewTicker(heartInterval)
+	go func() {
+		t := time.NewTicker(heartInterval)
+		for {
+			select {
+			case <-t.C:
+				logger.Debug().Msg("Enclave still alive.")
+			case <-ctx.Done():
+				t.Stop()
+				return
+			}
+		}
+	}()
 
 	for {
 		select {
-		case <-t.C:
-			logger.Debug().Msg("Enclave still alive.")
 		case <-ctx.Done():
-			t.Stop()
+			// TODO(elffjs): I think this is never getting hit.
 			return nil
 		default:
 			if err := accept(fd, logger); err != nil {
