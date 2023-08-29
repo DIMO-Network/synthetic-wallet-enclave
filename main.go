@@ -169,6 +169,7 @@ func accept(fd int, logger *zerolog.Logger) error {
 	return unix.Send(nfd, res, 0)
 }
 
+const cid = 16
 const heartInterval = 10 * time.Second
 
 func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
@@ -180,7 +181,7 @@ func enclave(ctx context.Context, port uint32, logger *zerolog.Logger) error {
 	logger.Debug().Msgf("Created socket %d.", fd)
 
 	sa := &unix.SockaddrVM{
-		CID:  unix.VMADDR_CID_ANY,
+		CID:  cid,
 		Port: port,
 	}
 
