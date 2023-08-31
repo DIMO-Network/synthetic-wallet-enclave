@@ -11,3 +11,5 @@ FROM amazonlinux:2 as image
 
 COPY --from=build /deps/synthetic-wallet-enclave.eif /
 COPY --from=build /deps/run.sh /
+
+CMD ["/run.sh"]
