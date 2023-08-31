@@ -13,7 +13,7 @@ FROM amazonlinux:2 as image
 COPY --from=build /usr/bin/nitro-cli /
 COPY --from=build /deps/synthetic-wallet-enclave.eif /
 
-RUN chmod +x /synthetic-wallet-enclave.eif
+RUN mkdir -p /var/log/nitro_enclaves
 
 COPY --from=build /deps/run.sh /
 
