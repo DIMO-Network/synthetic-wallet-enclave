@@ -9,5 +9,5 @@ RUN wget "https://github.com/DIMO-Network/synthetic-wallet-enclave/releases/down
 
 FROM amazonlinux:2 as image
 
-COPY --from=build synthetic-wallet-enclave.eif /
-COPY --from=build run.sh /
+COPY --from=build /deps/synthetic-wallet-enclave.eif /
+COPY --from=build /deps/run.sh /
