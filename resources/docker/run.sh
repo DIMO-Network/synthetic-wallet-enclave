@@ -8,6 +8,7 @@ readonly ENCLAVE_CID=16
 
 main() {
     ls -al /
+    ls -al /var/log
 
     /nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
         --eif-path $EIF_PATH --debug-mode --enclave-cid $ENCLAVE_CID
