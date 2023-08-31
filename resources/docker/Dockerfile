@@ -1,6 +1,6 @@
 FROM amazonlinux:2 as build
 
-RUN yum install wget
+RUN yum -y install wget
 
 WORKDIR /deps
 
