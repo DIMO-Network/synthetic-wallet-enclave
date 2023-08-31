@@ -14,6 +14,7 @@ COPY --from=build /usr/bin/nitro-cli /
 COPY --from=build /deps/synthetic-wallet-enclave.eif /
 
 RUN mkdir -p /var/log/nitro_enclaves
+RUN touch /var/log/nitro_enclaves/nitro_enclaves.log
 
 COPY --from=build /deps/run.sh /
 
