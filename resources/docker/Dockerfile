@@ -1,5 +1,7 @@
 FROM amazonlinux:2 as build
 
+RUN yum install wget
+
 WORKDIR /deps
 
 COPY resources/docker/run.sh .
