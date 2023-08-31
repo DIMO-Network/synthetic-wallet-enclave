@@ -8,11 +8,9 @@ FROM amazonlinux:2 as full_image
 RUN amazon-linux-extras install aws-nitro-enclaves-cli && \
     yum install aws-nitro-enclaves-cli-devel jq wget -y
 
-WORKDIR /ne-bin
+WORKDIR /ne-deps
 
 RUN wget "https://github.com/DIMO-Network/synthetic-wallet-enclave/releases/download/v1.7/synthetic-wallet-enclave.eif"
-
-WORKDIR /ne-deps
 
 # Copy only the required binaries to /ne-deps folder.
 #
@@ -47,7 +45,6 @@ FROM amazonlinux:2 as image
 #
 COPY --from=full_image /ne-deps /
 
-COPY --from=full_image /ne-bin/synthetic-wallet-enclave.eif /home
 COPY resources/docker/run.sh  /home
 
 CMD ["/home/run.sh"]
