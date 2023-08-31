@@ -1,50 +1,22 @@
-# Copyright 2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+FROM amazonlinux:2 as build
 
-######## full image ########
+RUN yum -y install wget
+RUN amazon-linux-extras install aws-nitro-enclaves-cli
 
-FROM amazonlinux:2 as full_image
+WORKDIR /deps
 
-RUN amazon-linux-extras install aws-nitro-enclaves-cli && \
-    yum install aws-nitro-enclaves-cli-devel jq wget -y
-
-WORKDIR /ne-deps
-
+COPY resources/docker/run.sh .
 RUN wget "https://github.com/DIMO-Network/synthetic-wallet-enclave/releases/download/v1.7/synthetic-wallet-enclave.eif"
-
-# Copy only the required binaries to /ne-deps folder.
-#
-RUN BINS="\
-    /usr/bin/nitro-cli \
-    /usr/bin/nitro-enclaves-allocator \
-    /usr/bin/jq \
-    " && \
-    for bin in $BINS; do \
-        { echo "$bin"; ldd "$bin" | grep -Eo "/.*lib.*/[^ ]+"; } | \
-            while read path; do \
-                mkdir -p ".$(dirname $path)"; \
-                cp -fL "$path" ".$path"; \
-            done \
-    done
-
-# Prepare other required files and folders for the final image.
-#
-RUN \
-    mkdir -p /ne-deps/etc/nitro_enclaves && \
-    mkdir -p /ne-deps/run/nitro_enclaves && \
-    mkdir -p /ne-deps/var/log/nitro_enclaves && \
-    cp -rf /usr/share/nitro_enclaves/ /ne-deps/usr/share/ && \
-    cp -f /etc/nitro_enclaves/allocator.yaml /ne-deps/etc/nitro_enclaves/allocator.yaml
-
-######## hello image ########
 
 FROM amazonlinux:2 as image
 
-# Copying dependencies of the enclave apps from the 'full_image'
-# to shrink the final image size.
-#
-COPY --from=full_image /ne-deps /
+COPY --from=build /usr/bin/nitro-cli /
+COPY --from=build /deps/synthetic-wallet-enclave.eif /
 
-COPY resources/docker/run.sh  /home
+RUN mkdir -p /run/nitro_enclaves
+RUN mkdir -p /var/log/nitro_enclaves
+RUN touch /var/log/nitro_enclaves/nitro_enclaves.log
 
-CMD ["/home/run.sh"]
+COPY --from=build /deps/run.sh /
+
+CMD ["/run.sh"]
