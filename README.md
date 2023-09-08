@@ -1,6 +1,7 @@
 On the build box:
 
 ```shell
+go build .
 nitro-cli build-enclave --docker-dir . --docker-uri synthetic-wallet-enclave --output-file synthetic-wallet-enclave.eif
 ```
 
