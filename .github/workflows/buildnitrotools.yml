@@ -26,7 +26,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       # - run: |
       #     ls ./aws-nitro-enclaves-sdk-c/containers        
-      - name: Build and push
+      - name: Build and push builder
         uses: docker/build-push-action@v3
         with:
           file: ./aws-nitro-enclaves-sdk-c/containers/Dockerfile.al2
@@ -35,7 +35,15 @@ jobs:
           target: builder
           platforms: linux/amd64
           tags: dimozone/aws-nitro-enclaves-sdk-c:latest
-    
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          file: ./aws-nitro-enclaves-sdk-c/containers/Dockerfile.al2
+          push: true
+          context: ./aws-nitro-enclaves-sdk-c
+          target: kmstool-enclave-cli
+          platforms: linux/amd64
+          tags: dimozone/kmstool-enclave-cli:latest   
   build_nitro_cli:
     # The type of runner that the job will run on
     name: build nitro-cli image
