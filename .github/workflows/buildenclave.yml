@@ -45,7 +45,6 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
       volumes:
         - ${{ github.workspace }}/build/output:/build/output
-      options: --priviledged
     steps:
       - name: Get short SHA
         id: slug
