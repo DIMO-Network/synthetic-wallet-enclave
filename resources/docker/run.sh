@@ -7,10 +7,7 @@ readonly ENCLAVE_MEMORY_SIZE=1024
 readonly ENCLAVE_CID=16
 readonly AWS_REGION=us-east-2
 main() {
-    ls -al /
-    ls -al /var/log
-
-    /nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
+    nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
         --eif-path $EIF_PATH --debug-mode --enclave-cid $ENCLAVE_CID
 
     vsock-proxy 8000 kms.$AWS_REGION.amazonaws.com 443 &
