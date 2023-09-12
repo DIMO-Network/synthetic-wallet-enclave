@@ -1,10 +1,9 @@
-FROM amazonlinux as full_image
+FROM amazonlinux:2 as full_image
 
 # Install packages
 #
-RUN amazon-linux-extras install aws-nitro-enclaves-cli 
-RUN yum install aws-nitro-enclaves-cli-devel jq util-linux unzip curl which file -y
-
+RUN amazon-linux-extras install aws-nitro-enclaves-cli && \
+    yum install aws-nitro-enclaves-cli-devel jq util-linux unzip curl which file -y
 # Install awscli v2
 #
 RUN \
