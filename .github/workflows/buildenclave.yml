@@ -30,6 +30,7 @@ jobs:
           context: .
           file: ./resources/appimage/Dockerfile
           push: false
+          load: true
           platforms: linux/amd64
           tags: dimozone/synthetic-wallet-enclave-app:local
 
