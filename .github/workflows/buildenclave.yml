@@ -85,7 +85,6 @@ jobs:
 
       - name: Display structure of downloaded files
         run: ls -R
-        working-directory: ~/  
 
       - name: Build and push
         uses: docker/build-push-action@v3
