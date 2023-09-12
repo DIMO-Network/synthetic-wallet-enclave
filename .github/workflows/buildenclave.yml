@@ -52,3 +52,7 @@ jobs:
         run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
       - name: Build enclave
         run: nitro-cli build-enclave --docker-uri dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }} --output-file /build/output/synthetic-wallet-enclave.eif
+      - uses: actions/upload-artifact@v3
+        with:
+          name: synthetic-wallet-enclave
+          path: ${{ github.workspace }}/build/output//build/output/synthetic-wallet-enclave.eif
