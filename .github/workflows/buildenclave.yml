@@ -54,4 +54,4 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: synthetic-wallet-enclave
-          path: ${{ github.workspace }}/build/output//build/output/synthetic-wallet-enclave.eif
+          path: ${{ github.workspace }}/build/output/synthetic-wallet-enclave.eif
