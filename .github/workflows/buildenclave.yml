@@ -78,11 +78,15 @@ jobs:
         id: slug
         run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
       
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@v3
         with:
           name: synthetic-wallet-enclave
-          path: resources/docker/synthetic-wallet-enclave.eif
-      
+          path: ~/resources/docker/synthetic-wallet-enclave.eif
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: ~/  
+
       - name: Build and push
         uses: docker/build-push-action@v3
         with:

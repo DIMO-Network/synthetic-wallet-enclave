@@ -50,6 +50,7 @@ COPY --from=full_image  /usr/bin/vsock-proxy /
 COPY --from=full_image /usr/bin/nitro-cli /
 COPY --from=full_image /ne-deps /
 
-COPY run.sh /
-COPY synthetic-wallet-enclave.eif /eif/
+COPY resources/docker/run.sh  /
+COPY resources/docker/synthetic-wallet-enclave.eif /eif/
+
 CMD ["/run.sh"]

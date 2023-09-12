@@ -18,3 +18,6 @@ main() {
 }
 
 main
+
+#nitro-cli terminate-enclave --all
+#nitro-cli describe-enclaves | jq -r .[0].EnclaveID
