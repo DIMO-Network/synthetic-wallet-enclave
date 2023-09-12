@@ -35,7 +35,7 @@ jobs:
           target: builder
           platforms: linux/amd64
           tags: dimozone/aws-nitro-enclaves-sdk-c:latest
-      - name: Build and push
+      - name: Build and push kmstool-enclave-cli
         uses: docker/build-push-action@v3
         with:
           file: ./aws-nitro-enclaves-sdk-c/containers/Dockerfile.al2
