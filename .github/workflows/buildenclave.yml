@@ -55,3 +55,34 @@ jobs:
         with:
           name: synthetic-wallet-enclave
           path: ${{ github.workspace }}/build/output/synthetic-wallet-enclave.eif
+  build-final-image:
+    # The type of runner that the job will run on
+    name: build-final-image
+    runs-on: [self-hosted,enclave]
+    needs: build-enclave
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Get short SHA
+        id: slug
+        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+      
+      - uses: actions/download-artifact@master
+        with:
+          name: synthetic-wallet-enclave
+          path: ${{ github.workspace }}/resources/docker/synthetic-wallet-enclave.eif
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./resources/docker/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: dimozone/synthetic-wallet-enclave:${{ steps.slug.outputs.sha7 }}, dimozone/synthetic-wallet-enclave:latest
