@@ -5,7 +5,7 @@ on:
 jobs:
   build_test:
     # The type of runner that the job will run on
-    name: buildpushdev
+    name: build-app-and-enclave-builder
     runs-on: [self-hosted,enclave]
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -24,7 +24,7 @@ jobs:
         id: slug
         run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
 
-      - name: Build and push
+      - name: Build and push enclave app
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -32,14 +32,22 @@ jobs:
           push: true
           load: false
           platforms: linux/amd64
-          tags: dimozone/synthetic-wallet-enclave-app:local
+          tags: dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }}, dimozone/synthetic-wallet-enclave-app:latest
 
-      - name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: ./resources/enclaveimage/Dockerfile
-          push: false
-          platforms: linux/amd64
-          tags: dimozone/synthetic-wallet-enclave:${{ steps.slug.outputs.sha7 }}
-
+  enclave-image-build:
+    name: build-app-and-enclave-builder
+    runs-on: [self-hosted,enclave]
+    container:
+      image: dimozone/nitro-enclave-builder:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      volumes:
+        - ${{ github.workspace }}/build/output:/build/output
+      options: --priviledged
+    steps:
+      - name: Get short SHA
+        id: slug
+        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+      - name: Build enclave
+        run: nitro-cli build-enclave --docker-uri dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }} --output-file /build/output/synthetic-wallet-enclave.eif

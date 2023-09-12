@@ -35,4 +35,13 @@ jobs:
           target: builder
           platforms: linux/amd64
           tags: dimozone/aws-nitro-enclaves-sdk-c:latest
+      - name: Build and push enclave builder
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./resources/enclavebuilderimage/Dockerfile
+          push: false
+          platforms: linux/amd64
+          tags: dimozone/nitro-enclave-builder:latest
+  
 
