@@ -7,4 +7,4 @@ RUN amazon-linux-extras install aws-nitro-enclaves-cli && \
 
 WORKDIR /build/
 RUN nitro-cli describe-enclaves 
-RUN nitro-cli build-enclave --docker-uri dimozone/synthetic-wallet-enclave-app:local --output-file synthetic-wallet-enclave.eif
+RUN nitro-cli build-enclave --docker-uri docker.io/dimozone/synthetic-wallet-enclave-app:local --output-file synthetic-wallet-enclave.eif
