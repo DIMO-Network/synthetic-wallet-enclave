@@ -1,5 +1,4 @@
-name: Manual trigger
-
+name: build-app-image
 on:
   workflow_dispatch:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -10,11 +9,7 @@ jobs:
     runs-on: self-hosted
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout enclave sdk
-        uses: actions/checkout@v4
-        with:
-          repository: 'aws/aws-nitro-enclaves-sdk-c'
-          path: 'aws-nitro-enclaves-sdk-c'
+      - uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -24,17 +19,17 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - run: |
-          pwd
-          ls
-          ls ./aws-nitro-enclaves-sdk-c/containers        
+      
+      - name: Get short SHA
+        id: slug
+        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+        
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          file: ./aws-nitro-enclaves-sdk-c/containers/Dockerfile.al2
+          context: .
+          file: ./resources/appimage/Dockerfile
           push: true
-          context: ./aws-nitro-enclaves-sdk-c
-          target: builder
           platforms: linux/amd64
-          tags: dimozone/aws-nitro-enclaves-sdk-c:latest
+          tags: dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }}, dimozone/synthetic-wallet-enclave-app:latest
 
