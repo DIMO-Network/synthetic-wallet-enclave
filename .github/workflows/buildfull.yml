@@ -14,7 +14,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 'aws/aws-nitro-enclaves-sdk-c'
-          
+          path: 'aws-nitro-enclaves-sdk-c'
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -23,12 +24,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        
+      - run: |
+          pwd
+          ls
+          ls ./aws-nitro-enclaves-sdk-c/containers        
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          file: ./containers/Dockerfile.al2
+          file: ./aws-nitro-enclaves-sdk-c/containers/Dockerfile.al2
           push: true
+          context: ./aws-nitro-enclaves-sdk-c
           target: builder
           platforms: linux/amd64
           tags: dimozone/aws-nitro-enclaves-sdk-c:latest

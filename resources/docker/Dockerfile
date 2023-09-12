@@ -3,17 +3,20 @@ FROM amazonlinux:2 as build
 RUN yum -y install wget
 RUN amazon-linux-extras install aws-nitro-enclaves-cli
 
-COPY / /
+WORKDIR /deps
 
-WORKDIR /build
-
-RUN nitro-cli build-enclave --docker-dir . --docker-uri synthetic-wallet-enclave --output-file synthetic-wallet-enclave.eif
+COPY resources/docker/run.sh .
+RUN wget "https://github.com/DIMO-Network/synthetic-wallet-enclave/releases/download/v1.7/synthetic-wallet-enclave.eif"
 
 FROM amazonlinux:2 as image
 
 COPY --from=build /usr/bin/nitro-cli /
-COPY --from=build /build/synthetic-wallet-enclave.eif /
+COPY --from=build /deps/synthetic-wallet-enclave.eif /
 
-COPY run.sh /
+RUN mkdir -p /run/nitro_enclaves
+RUN mkdir -p /var/log/nitro_enclaves
+RUN touch /var/log/nitro_enclaves/nitro_enclaves.log
+
+COPY --from=build /deps/run.sh /
 
 CMD ["/run.sh"]
