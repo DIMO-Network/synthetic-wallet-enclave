@@ -81,7 +81,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: synthetic-wallet-enclave
-          path: ~/resources/docker/synthetic-wallet-enclave.eif
+          path: ${{ github.workspace }}/resources/docker/synthetic-wallet-enclave.eif
 
       - name: Display structure of downloaded files
         run: ls -R
