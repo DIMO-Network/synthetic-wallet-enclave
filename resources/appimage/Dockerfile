@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -v -o /usr/bin/synthetic-wallet-enclave
+RUN CGO_ENABLED=0 go build -v -o /usr/bin/synthetic-wallet-enclave
 
 FROM amazonlinux:2 AS release
 
@@ -20,7 +20,6 @@ COPY --from=enclave-app-build /usr/bin/synthetic-wallet-enclave /
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib64/"
 
-USER nonroot:nonroot
 
 EXPOSE 5000
 
