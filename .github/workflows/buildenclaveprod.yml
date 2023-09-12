@@ -1,5 +1,8 @@
-name: build-enclave-image
+name: build-enclave-image-prod
 on:
+  push:
+    tags:
+      - v*
   workflow_dispatch:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -20,9 +23,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Get short SHA
-        id: slug
-        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
+        with:
+          strip_v: true
 
       - name: Build and push enclave app
         uses: docker/build-push-action@v3
@@ -32,7 +37,7 @@ jobs:
           push: true
           load: false
           platforms: linux/amd64
-          tags: dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }}, dimozone/synthetic-wallet-enclave-app:latest
+          tags: dimozone/synthetic-wallet-enclave-app:${{steps.tag.outputs.tag}}
 
   build-enclave:
     name: build-enclave
@@ -46,11 +51,13 @@ jobs:
       volumes:
         - ${{ github.workspace }}/build/output:/build/output
     steps:
-      - name: Get short SHA
-        id: slug
-        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
+        with:
+          strip_v: true
       - name: Build enclave
-        run: nitro-cli build-enclave --docker-uri dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }} --output-file /build/output/synthetic-wallet-enclave.eif
+        run: nitro-cli build-enclave --docker-uri dimozone/synthetic-wallet-enclave-app:${{steps.tag.outputs.tag}} --output-file /build/output/synthetic-wallet-enclave.eif
       - uses: actions/upload-artifact@v3
         with:
           name: synthetic-wallet-enclave
@@ -74,9 +81,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2   
  
-      - name: Get short SHA
-        id: slug
-        run: echo "::set-output name=sha7::$(echo ${GITHUB_SHA} | cut -c1-7)"
+      - name: Get tag
+        id: tag
+        uses: dawidd6/action-get-tag@v1
+        with:
+          strip_v: true
       
       - uses: actions/download-artifact@v3
         with:
@@ -93,4 +102,4 @@ jobs:
           file: ./resources/docker/Dockerfile
           push: true
           platforms: linux/amd64
-          tags: dimozone/synthetic-wallet-enclave:${{ steps.slug.outputs.sha7 }}, dimozone/synthetic-wallet-enclave:latest
+          tags: dimozone/synthetic-wallet-enclave:${{steps.tag.outputs.tag}}
