@@ -55,6 +55,7 @@ jobs:
         with:
           name: synthetic-wallet-enclave
           path: ${{ github.workspace }}/build/output/synthetic-wallet-enclave.eif
+
   build-final-image:
     # The type of runner that the job will run on
     name: build-final-image
@@ -80,7 +81,8 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: synthetic-wallet-enclave
-          path: ${{ github.workspace }}/resources/docker/synthetic-wallet-enclave.eif
+          path: resources/docker/synthetic-wallet-enclave.eif
+      
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
