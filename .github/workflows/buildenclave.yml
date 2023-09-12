@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build_test:
+  build-app:
     # The type of runner that the job will run on
-    name: build-app-and-enclave-builder
+    name: build-app
     runs-on: [self-hosted,enclave]
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -34,9 +34,10 @@ jobs:
           platforms: linux/amd64
           tags: dimozone/synthetic-wallet-enclave-app:${{ steps.slug.outputs.sha7 }}, dimozone/synthetic-wallet-enclave-app:latest
 
-  enclave-image-build:
-    name: build-app-and-enclave-builder
+  build-enclave:
+    name: build-enclave
     runs-on: [self-hosted,enclave]
+    needs: build-app
     container:
       image: dimozone/nitro-enclave-builder:latest
       credentials:
