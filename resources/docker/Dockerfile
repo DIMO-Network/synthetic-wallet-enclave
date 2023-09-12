@@ -43,7 +43,10 @@ RUN \
     cp -rf /usr/share/nitro_enclaves/ /ne-deps/usr/share/ && \
     cp -f /etc/nitro_enclaves/vsock-proxy.yaml /ne-deps/etc/nitro_enclaves
 
+
 FROM amazonlinux:2
+
+RUN mkdir -p /lib64
 COPY --from=full_image  /usr/bin/vsock-proxy /
 COPY --from=full_image /usr/bin/nitro-cli /
 COPY --from=full_image /ne-deps /
