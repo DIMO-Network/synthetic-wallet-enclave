@@ -5,7 +5,7 @@ readonly EIF_PATH="/eif/synthetic-wallet-enclave.eif"
 readonly ENCLAVE_CPU_COUNT=2
 readonly ENCLAVE_MEMORY_SIZE=1024
 readonly ENCLAVE_CID=16
-
+readonly AWS_REGION=us-east-2
 main() {
     ls -al /
     ls -al /var/log
