@@ -6,12 +6,6 @@ RUN amazon-linux-extras install aws-nitro-enclaves-cli && \
     yum install aws-nitro-enclaves-cli-devel jq util-linux unzip curl which file -y
 # Install awscli v2
 #
-RUN \
-    cd tmp && \
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-$(arch).zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    ./aws/install
-
 WORKDIR /ne-deps
 
 # Copy only the required binaries to /ne-deps folder.
@@ -46,10 +40,11 @@ RUN \
 
 FROM amazonlinux:2
 
-RUN mkdir -p /lib64
-COPY --from=full_image  /usr/bin/vsock-proxy /
-COPY --from=full_image /usr/bin/nitro-cli /
-COPY --from=full_image /ne-deps /
+COPY --from=full_image /ne-deps/etc /etc/
+COPY --from=full_image /ne-deps/lib /lib/
+COPY --from=full_image /ne-deps/lib64 /lib64/
+COPY --from=full_image /ne-deps/usr/bin /usr/bin/
+COPY --from=full_image /ne-deps/usr/lib64 /usr/lib64/
 
 COPY resources/docker/run.sh  /
 COPY resources/docker/synthetic-wallet-enclave.eif /eif/
