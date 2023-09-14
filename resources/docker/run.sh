@@ -24,7 +24,7 @@ start() {
   trap 'kill ${!}; term_handler' SIGTERM
   vsock-proxy 8000 kms.$AWS_REGION.amazonaws.com 443 &
 
-  if [[ ! -z "${ENCLAVE_DEBUG_MODE}" ]]; then
+  if [[ -z "${ENCLAVE_DEBUG_MODE}" ]]; then
     echo 'Starting production enclave.'
     nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
       --eif-path $EIF_PATH --enclave-cid $ENCLAVE_CID &
