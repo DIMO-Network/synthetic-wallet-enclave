@@ -2,7 +2,7 @@
 
 set -xe
 readonly ENCLAVE_NAME="synthetic-wallet-enclave"
-readonly EIF_PATH="/eif/synthetic-wallet-enclave.eif"
+readonly EIF_PATH="/eif/$ENCLAVE_NAME.eif"
 
 
 ENCLAVE_CPU_COUNT=${ENCLAVE_CPU_COUNT:-1}
@@ -19,27 +19,33 @@ term_handler() {
   exit 0;
 }
 
-# on callback, kill the last background process, which is `tail -f /dev/null` and execute the specified handler
-trap 'kill ${!}; term_handler' SIGTERM
-
 # run application
+start() {
+  trap 'kill ${!}; term_handler' SIGTERM
+  vsock-proxy 8000 kms.$AWS_REGION.amazonaws.com 443 &
 
-vsock-proxy 8000 kms.$AWS_REGION.amazonaws.com 443 &
+  if [[ ! -z "${ENCLAVE_DEBUG_MODE}" ]]; then
+    echo 'Starting production enclave.'
+    nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
+      --eif-path $EIF_PATH --enclave-cid $ENCLAVE_CID &
+    echo 'Enclave running.'
+  else
+    echo 'Starting development enclave.'
+    nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
+      --eif-path $EIF_PATH --enclave-cid $ENCLAVE_CID --attach-console &
+    echo 'Enclave started in debug mode.'
+  fi
 
-if [[ ! -v "${ENCLAVE_DEBUG_MODE}" ]]; then
-  echo 'Starting production enclave.'
-  nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
-    --eif-path $EIF_PATH --enclave-cid $ENCLAVE_CID &
-  echo 'Enclave running.'
-else
-  echo 'Starting development enclave.'
-  nitro-cli run-enclave --cpu-count $ENCLAVE_CPU_COUNT --memory $ENCLAVE_MEMORY_SIZE \
-    --eif-path $EIF_PATH --enclave-cid $ENCLAVE_CID --attach-console &
-  echo 'Enclave started in debug mode.'
-fi
+  # wait forever
+  while true
+  do
+    tail -f /dev/null & wait ${!}
+  done
+}
 
-# wait forever
-while true
-do
-  tail -f /dev/null & wait ${!}
-done
+healthcheck() {
+  cmd="nitro-cli describe-enclaves | jq -e '"'[ .[] | select( .EnclaveName == "'$ENCLAVE_NAME'" and .State == "RUNNING") ] | length == 1 '"'"
+  bash -c "$cmd"
+}
+
+"$@"

@@ -10,4 +10,4 @@ RUN amazon-linux-extras install aws-nitro-enclaves-cli -y && \
 COPY resources/docker/run.sh  /
 COPY resources/docker/synthetic-wallet-enclave.eif /eif/
 
-CMD ["/run.sh"]
+CMD ["/run.sh", "start"]
