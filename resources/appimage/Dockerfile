@@ -1,5 +1,6 @@
 FROM golang:1.21 as enclave-app-build
 
+ENV CGO_ENABLED=0
 ENV GOOS=linux
 
 WORKDIR /src/synthetic-wallet-enclave
@@ -12,7 +13,7 @@ COPY . .
 
 RUN go build -v -o /usr/bin/synthetic-wallet-enclave
 
-FROM debian:bullseye-slim AS release
+FROM amazonlinux:2 AS release
 
 WORKDIR /
 
