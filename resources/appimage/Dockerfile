@@ -1,9 +1,7 @@
 FROM golang:1.21 as enclave-app-build
 
-
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-RUN useradd -u 10001 enclave
 
 WORKDIR /src/synthetic-wallet-enclave
 
@@ -21,11 +19,11 @@ WORKDIR /
 
 COPY --from=dimozone/aws-nitro-enclaves-sdk-c:latest /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=dimozone/aws-nitro-enclaves-sdk-c:latest /usr/bin/kmstool_enclave_cli /
-COPY --from=enclave-app-build /usr/bin/synthetic-wallet-enclave /
+COPY --from=enclave-app-build --chown=1001:1001 /usr/bin/synthetic-wallet-enclave /
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib64/"
 
-USER enclave
+USER 1001:1001
 
 EXPOSE 5000
 
