@@ -1,6 +1,5 @@
 FROM golang:1.21 as enclave-app-build
 
-ENV CGO_ENABLED=0
 ENV GOOS=linux
 
 WORKDIR /src/synthetic-wallet-enclave
