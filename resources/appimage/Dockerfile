@@ -1,5 +1,10 @@
 FROM golang:1.21 as enclave-app-build
 
+
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+RUN useradd -u 10001 enclave
+
 WORKDIR /src/synthetic-wallet-enclave
 
 COPY go.mod go.sum ./
@@ -8,9 +13,9 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -v -o /usr/bin/synthetic-wallet-enclave
+RUN go build -v -o /usr/bin/synthetic-wallet-enclave
 
-FROM amazonlinux:2 AS release
+FROM debian:bullseye-slim AS release
 
 WORKDIR /
 
@@ -20,6 +25,7 @@ COPY --from=enclave-app-build /usr/bin/synthetic-wallet-enclave /
 
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib64/"
 
+USER enclave
 
 EXPOSE 5000
 
